@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahayatri - Your Smart Commute Assistant</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #7c3aed;
+            --success-color: #16a34a;
+            --warning-color: #f59e0b;
+            --danger-color: #dc2626;
+
+            --light-bg: #f3f4f6;
+            --light-card-bg: #ffffff;
+            --light-text: #1f2937;
+            --light-text-muted: #6b7280;
+            --light-border: #e5e7eb;
+
+            --dark-bg: #111827;
+            --dark-card-bg: #1f2937;
+            --dark-text: #f9fafb;
+            --dark-text-muted: #9ca3af;
+            --dark-border: #374151;
+        }
+        
+        [data-theme="light"] {
+            --bg-color: var(--light-bg);
+            --card-bg-color: var(--light-card-bg);
+            --text-color: var(--light-text);
+            --text-muted-color: var(--light-text-muted);
+            --border-color: var(--light-border);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: var(--dark-bg);
+            --card-bg-color: var(--dark-card-bg);
+            --text-color: var(--dark-text);
+            --text-muted-color: var(--dark-text-muted);
+            --border-color: var(--dark-border);
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        #app-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .page-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .app-page {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+            min-height: 100%;
+        }
+        
+        .app-page.active {
+            display: block;
+        }
+        
+        #login-page.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+        }
+
+        /* --- Global Component Styles --- */
+        .card {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .form-control, .form-select, .input-group-text {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .form-control:focus {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+        }
+        .modal-content {
+             background-color: var(--card-bg-color);
+        }
+
+        /* --- Login Page --- */
+        #login-page {
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to top, var(--bg-color) 50%, var(--primary-color) 50%);
+        }
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        .otp-inputs {
+            display: flex;
+            justify-content: space-between;
+        }
+        .otp-inputs input {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* --- Main App UI --- */
+        .bottom-nav {
+            background-color: var(--card-bg-color);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .bottom-nav a {
+            color: var(--text-muted-color);
+        }
+        .bottom-nav a.active {
+            color: var(--primary-color);
+        }
+       
+        /* --- Main Page --- */
+        .dashboard-card {
+            border: none;
+            border-radius: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.1);
+        }
+        #main-map {
+            height: 35vh;
+            width: 100%;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* --- Results Page --- */
+        .bus-card {
+            border-radius: 1rem;
+            transition: box-shadow 0.3s, transform 0.3s;
+        }
+
+        /* --- Live Tracking Page (Overlay) --- */
+        #live-tracking-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5000;
+            display: none; /* Changed from .app-page rule */
+            flex-direction: column;
+        }
+        #live-map {
+            flex-grow: 1;
+            width: 100%;
+            background-color: var(--bg-color);
+        }
+        .tracking-details {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1001; /* Above map, below header button */
+        }
+        .bus-marker-icon .bus-icon {
+            font-size: 24px;
+            text-shadow: 0 0 8px rgba(0,0,0,0.8);
+            transition: transform 0.2s linear;
+        }
+        .bus-marker-icon .pulse {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            animation: pulse 1.5s infinite;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+         .stop-icon {
+            background-color: white;
+            border: 2px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 12px !important;
+            height: 12px !important;
+        }
+
+        /* Spinner for loading state */
+        .spinner-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Loading Spinner -->
+    <div class="spinner-container" id="loading-spinner">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+    
+    <div id="app-container">
+        <!-- All pages will be rendered inside this content div -->
+        <div class="page-content">
+
+            <!-- PAGE 1: LOGIN -->
+            <div id="login-page" class="app-page">
+                <div class="card login-card shadow-lg">
+                    <div class="card-body">
+                        <div class="language-switcher btn-group w-100 mb-4" role="group">
+                            <button type="button" class="btn btn-outline-primary active" data-lang="en">English</button>
+                            <button type="button" class="btn btn-outline-primary" data-lang="hi">हिंदी</button>
+                        </div>
+                        <div class="text-center mb-4">
+                            <h2 class="fw-bold" style="color: var(--primary-color);"><i class="bi bi-bus-front-fill"></i> Sahayatri</h2>
+                            <p class="text-muted" data-lang-key="login_subtitle">Your Smart Commute Assistant</p>
+                        </div>
+                        
+                        <div id="phone-input-section">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label" data-lang-key="phone_label">Phone Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+91</span>
+                                    <input type="tel" class="form-control" id="phone" placeholder="98765 43210" required pattern="\d{10}">
+                                </div>
+                                 <div class="invalid-feedback" data-lang-key="phone_error">Please enter a valid 10-digit phone number.</div>
+                            </div>
+                            <button id="send-otp-btn" class="btn btn-primary w-100" data-lang-key="send_otp">Send OTP</button>
+                        </div>
+                        
+                        <div id="otp-input-section" style="display: none;">
+                            <p class="text-center mb-2" data-lang-key="otp_prompt">Enter the OTP sent to your number.</p>
+                            <div class="otp-inputs mb-3">
+                                <input type="text" class="form-control" maxlength="1">
+                                <input type="text" class="form-control" maxlength="1">
+                                <input type="text" class="form-control" maxlength="1">
+                                <input type="text" class="form-control" maxlength="1">
+                            </div>
+                            <button id="verify-otp-btn" class="btn btn-success w-100" data-lang-key="verify_otp">Verify OTP</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: MAIN DASHBOARD -->
+            <div id="main-page" class="app-page">
+                <div class="container py-4 p-sm-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                             <h5 class="fw-bold mb-0" id="greeting">Good Morning!</h5>
+                             <p class="text-muted mb-0" data-lang-key="dashboard_subtitle">Where are you heading today?</p>
+                        </div>
+                         <button class="btn btn-sm btn-outline-danger" id="logout-btn" data-lang-key="logout">Logout</button>
+                    </div>
+
+                    <!-- Main Dashboard Layout -->
+                    <div id="dashboard-view">
+                        <div class="card bg-primary text-white p-4 mb-4 dashboard-card" id="plan-trip-card">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-search fs-1 me-3"></i>
+                                <div>
+                                    <h5 class="fw-bold" data-lang-key="plan_trip">Plan a New Trip</h5>
+                                    <p class="mb-0 small" data-lang-key="plan_trip_desc">Find the fastest and best bus route</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Favorite Routes Section -->
+                        <h6 class="fw-bold mt-4 mb-3" data-lang-key="favorites">Your Favorites</h6>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="card p-3 d-flex flex-row align-items-center">
+                                    <i class="bi bi-house-heart fs-4 me-2 text-primary"></i>
+                                    <span class="fw-medium" data-lang-key="home">Home</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card p-3 d-flex flex-row align-items-center">
+                                    <i class="bi bi-briefcase fs-4 me-2 text-primary"></i>
+                                    <span class="fw-medium" data-lang-key="work">Work</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Nearby Activity Section -->
+                        <h6 class="fw-bold mt-4 mb-3" data-lang-key="nearby_activity">Live Nearby Activity</h6>
+                        <div class="card">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="fw-medium mb-0">Esplanade Terminal</p>
+                                        <small class="text-muted" data-lang-key="next_bus_info">Next bus: S12 to Howrah</small>
+                                    </div>
+                                    <span class="badge bg-success-subtle text-success-emphasis rounded-pill">5 min</span>
+                                </li>
+                                 <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="fw-medium mb-0">KC Das Stop</p>
+                                        <small class="text-muted" data-lang-key="next_bus_info_2">Next bus: AC1 to Airport</small>
+                                    </div>
+                                    <span class="badge bg-success-subtle text-success-emphasis rounded-pill">8 min</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                         <!-- How it Works Section -->
+                        <h6 class="fw-bold mt-4 mb-3" data-lang-key="how_it_works">How It Works</h6>
+                        <div class="row text-center g-3">
+                            <div class="col-4">
+                                <div class="how-it-works-icon mx-auto">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                </div>
+                                <p class="small mt-2 mb-0" data-lang-key="step_1">Enter Destination</p>
+                            </div>
+                             <div class="col-4">
+                                <div class="how-it-works-icon mx-auto">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <p class="small mt-2 mb-0" data-lang-key="step_2">Get Live ETAs</p>
+                            </div>
+                             <div class="col-4">
+                                <div class="how-it-works-icon mx-auto">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                </div>
+                                <p class="small mt-2 mb-0" data-lang-key="step_3">Avoid Crowds</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trip Planner (Initially Hidden) -->
+                    <div id="trip-planner-section" class="d-none">
+                        <button class="btn btn-sm btn-outline-secondary mb-3" id="back-to-dashboard-btn"><i class="bi bi-arrow-left"></i> <span data-lang-key="back_to_dashboard">Back to Dashboard</span></button>
+                        <div id="main-map" class="mb-4"></div>
+                        <form id="trip-form">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold" data-lang-key="your_location">Your Location</label>
+                                        <div class="input-group">
+                                           <span class="input-group-text"><i class="bi bi-geo-alt-fill text-success"></i></span>
+                                           <input type="text" class="form-control" id="current-location" value="Esplanade, Kolkata" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold" data-lang-key="destination_label">Enter Destination</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-pin-map-fill text-danger"></i></span>
+                                            <input type="text" class="form-control" id="destination" placeholder="e.g., Howrah Station" required data-lang-placeholder="dest_placeholder">
+                                        </div>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg" data-lang-key="find_buses">Find Buses</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: BUS RESULTS -->
+            <div id="results-page" class="app-page">
+                 <div class="container-fluid px-0">
+                    <div class="page-header text-center shadow-sm">
+                        <div class="container">
+                            <div class="d-flex align-items-center position-relative py-3">
+                               <button id="back-to-main" class="btn btn-light me-3 position-absolute start-0" style="background: rgba(255,255,255,0.2); border:none; color:white;"><i class="bi bi-arrow-left"></i> <span data-lang-key="back">Back</span></button>
+                               <div class="mx-auto">
+                                    <h4 class="fw-bold mb-0" data-lang-key="available_buses">Available Buses</h4>
+                                    <p class="mb-0 opacity-75 small" id="route-info"></p>
+                               </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="container mt-4">
+                        <div id="bus-list" class="vstack gap-3">
+                            <!-- Bus cards will be injected here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PAGE 5: SETTINGS -->
+            <div id="settings-page" class="app-page">
+                 <div class="container py-4">
+                     <h3 class="fw-bold mb-4" data-lang-key="settings">Settings</h3>
+                     <div class="card">
+                         <div class="card-body">
+                             <div class="list-group list-group-flush">
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span data-lang-key="dark_mode">Dark Mode</span>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="theme-switch">
+                                    </div>
+                                </div>
+                                <div class="list-group-item">
+                                    <label for="language-select" class="form-label" data-lang-key="language">Language</label>
+                                    <select class="form-select" id="language-select">
+                                        <option value="en">English</option>
+                                        <option value="hi">हिंदी</option>
+                                    </select>
+                                </div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: LIVE TRACKING OVERLAY -->
+        <div id="live-tracking-page">
+            <button id="close-tracking-btn-header" class="btn btn-light shadow fw-medium" style="position: absolute; top: 1.5rem; left: 1.5rem; z-index: 1002;">
+                <i class="bi bi-arrow-left"></i> <span data-lang-key="back">Back</span>
+            </button>
+            <div id="live-map"></div>
+            <div class="tracking-details">
+                <div class="container pb-3">
+                        <div class="card shadow-lg" style="border-radius: 1.5rem;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="fw-bold mb-0" id="tracking-bus-id">Bus S12</h5>
+                                        <p class="text-muted mb-1" id="tracking-route">Esplanade to Howrah</p>
+                                    </div>
+                                </div>
+                                <hr style="border-color: var(--border-color);">
+                                <div class="d-flex justify-content-around text-center">
+                                    <div>
+                                        <p class="text-muted small mb-1" data-lang-key="live_eta">Live ETA</p>
+                                        <h5 class="fw-bold" id="tracking-eta">4 min</h5>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted small mb-1" data-lang-key="next_stop">Next Stop</p>
+                                        <h5 class="fw-bold" id="tracking-next-stop">BBD Bagh</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- Reroute Modal -->
+        <div class="modal fade" id="rerouteModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="border-radius: 1rem;">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold" data-lang-key="alt_route_title">Alternative Route</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body pt-0" id="reroute-options"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav d-none" id="main-nav">
+            <div class="d-flex justify-content-around py-2">
+                <a href="#" class="text-center bottom-nav-link active" data-page="main-page">
+                    <i class="bi bi-house-door-fill fs-4"></i>
+                    <div class="small" data-lang-key="home">Home</div>
+                </a>
+                <a href="#" class="text-center bottom-nav-link" data-page="settings-page">
+                    <i class="bi bi-gear-fill fs-4"></i>
+                    <div class="small" data-lang-key="settings">Settings</div>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS for Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // Main App Module
+        const SahayatriApp = {
+            // --- STATE ---
+            state: {
+                currentLang: 'en',
+                currentPage: 'login-page',
+                maps: { main: null, live: null },
+                liveTrackingAnimationId: null,
+            },
+
+            // --- TRANSLATIONS ---
+            translations: {
+                 en: {
+                    login_subtitle: 'Your Smart Commute Assistant', phone_label: 'Phone Number', send_otp: 'Send OTP',
+                    otp_prompt: 'Enter the OTP sent to your number.', verify_otp: 'Verify OTP', plan_trip: 'Plan a New Trip',
+                    plan_trip_desc: 'Find the fastest and best bus route', dashboard_subtitle: 'Where are you heading today?',
+                    logout: 'Logout', your_location: 'Your Location', destination_label: 'Enter Destination', 
+                    dest_placeholder: 'e.g., Howrah Station', find_buses: 'Find Buses', available_buses: 'Available Buses', 
+                    alt_route_title: 'Alternative Route', not_crowded: 'Not Crowded', crowded: 'Crowded', 
+                    overcrowded: 'Overcrowded', safe_to_board: 'Safe to board.', may_be_full: 'May be full.',
+                    bus_full_prompt: 'This bus is full. You can:', wait_next: '1. Wait for next bus on this route',
+                    find_alt: '2. Find an alternative route', alt_suggestion: "Here's a suggested alternative:", 
+                    part1: 'Part 1:', part2: 'Part 2:', phone_error: 'Please enter a valid 10-digit phone number.',
+                    settings: 'Settings', home: 'Home', dark_mode: 'Dark Mode', language: 'Language',
+                    track_live: 'Track Live', stop_tracking: 'Stop', live_eta: 'Live ETA', next_stop: 'Next Stop',
+                    favorites: 'Your Favorites', work: 'Work', nearby_activity: 'Live Nearby Activity',
+                    next_bus_info: 'Next bus: S12 to Howrah', next_bus_info_2: 'Next bus: AC1 to Airport',
+                    how_it_works: 'How It Works', step_1: 'Enter Destination', step_2: 'Get Live ETAs', step_3: 'Avoid Crowds',
+                    back_to_dashboard: 'Back to Dashboard',
+                    back: 'Back',
+                },
+                hi: {
+                    login_subtitle: 'आपकी स्मार्ट यात्रा का साथी', phone_label: 'फ़ोन नंबर', send_otp: 'ओटीपी भेजें',
+                    otp_prompt: 'आपके नंबर पर भेजा गया ओटीपी दर्ज करें।', verify_otp: 'ओटीपी सत्यापित करें', 
+                    plan_trip: 'नई यात्रा की योजना बनाएं', plan_trip_desc: 'सबसे तेज़ और सबसे अच्छा बस मार्ग खोजें', 
+                    dashboard_subtitle: 'आज आप कहाँ जा रहे हैं?', logout: 'लॉग आउट', your_location: 'आपका स्थान', 
+                    destination_label: 'गंतव्य दर्ज करें', dest_placeholder: 'जैसे, हावड़ा स्टेशन', find_buses: 'बसें खोजें',
+                    available_buses: 'उपलब्ध बसें', alt_route_title: 'वैकल्पिक मार्ग', not_crowded: 'भीड़ नहीं है',
+                    crowded: 'भीड़ है', overcrowded: 'अत्यधिक भीड़', safe_to_board: 'चढ़ना सुरक्षित है।', 
+                    may_be_full: 'पूरी भरी हो सकती है।', bus_full_prompt: 'यह बस भरी हुई है। आप कर सकते हैं:', 
+                    wait_next: '1. इसी रूट पर अगली बस का इंतजार करें', find_alt: '2. एक वैकल्पिक मार्ग खोजें', 
+                    alt_suggestion: 'यहाँ एक सुझाया गया विकल्प है:', part1: 'भाग 1:', part2: 'भाग 2:',
+                    phone_error: 'कृपया एक मान्य 10-अंकीय फ़ोन नंबर दर्ज करें।', settings: 'सेटिंग्स', home: 'होम',
+                    dark_mode: 'डार्क मोड', language: 'भाषा', track_live: 'लाइव ट्रैक करें', stop_tracking: 'रोकें',
+                    live_eta: 'लाइव ETA', next_stop: 'अगला पड़ाव', favorites: 'आपके पसंदीदा', work: 'काम',
+                    nearby_activity: 'आस-पास की लाइव गतिविधि', next_bus_info: 'अगली बस: S12 हावड़ा तक',
+                    next_bus_info_2: 'अगली बस: AC1 एयरपोर्ट तक', how_it_works: 'यह काम किस प्रकार करता है',
+                    step_1: 'गंतव्य दर्ज करें', step_2: 'लाइव ईटीए प्राप्त करें', step_3: 'भीड़ से बचें',
+                    back_to_dashboard: 'डैशबोर्ड पर वापस',
+                    back: 'वापस',
+                }
+            },
+
+            // --- MOCK DATA ---
+            mockData: {
+                busData: {
+                    "Esplanade-Howrah Station": [
+                        { id: 'Bus S12', eta: 5, crowd: 'not-crowded', nextBusEta: 15, routeCoords: [[22.5667, 88.3542], [22.5720, 88.3510], [22.5790, 88.3495], [22.5833, 88.3445]], stops: [{name: 'BBD Bagh', latlng: [22.5720, 88.3510]}, {name: 'Fairlie Place', latlng: [22.5790, 88.3495]}] },
+                        { id: 'Bus C37', eta: 8, crowd: 'overcrowded', nextBusEta: 18, alternative: { part1: 'Take Bus E4 to BBD Bagh (6 min)', part2: 'Take Bus 24A to Howrah (10 min)'} },
+                        { id: 'Bus AC1', eta: 12, crowd: 'crowded', nextBusEta: 22 }
+                    ]
+                },
+                userLocation: [22.5667, 88.3542], // Esplanade, Kolkata
+                nearestStops: [
+                    { name: 'Esplanade Bus Terminal', latlng: [22.5678, 88.3540] },
+                    { name: 'KC Das Bus Stop', latlng: [22.5655, 88.3561] },
+                    { name: 'Dharmatala', latlng: [22.5645, 88.3533] }
+                ],
+            },
+
+            // --- UI ELEMENTS ---
+            elements: {},
+
+            // --- INITIALIZATION ---
+            init() {
+                this.cacheElements();
+                this.addEventListeners();
+                this.setGreeting();
+                this.showPage('login-page');
+                this.setLanguage(this.state.currentLang);
+            },
+
+            cacheElements() {
+                this.elements.allPages = document.querySelectorAll('.app-page');
+                this.elements.pageContent = document.querySelector('.page-content');
+                this.elements.liveTrackingPage = document.getElementById('live-tracking-page');
+                this.elements.loadingSpinner = document.getElementById('loading-spinner');
+                this.elements.mainNav = document.getElementById('main-nav');
+                this.elements.dashboardView = document.getElementById('dashboard-view');
+                this.elements.tripPlannerSection = document.getElementById('trip-planner-section');
+            },
+
+            addEventListeners() {
+                document.getElementById('send-otp-btn').addEventListener('click', () => this.handleSendOtp());
+                document.getElementById('verify-otp-btn').addEventListener('click', () => this.handleLogin());
+                document.querySelectorAll('#otp-input-section input').forEach((input, index, inputs) => {
+                    input.addEventListener('keyup', (e) => this.handleOtpInput(e, index, inputs));
+                });
+                document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
+                document.getElementById('trip-form').addEventListener('submit', (e) => this.handleFindBuses(e));
+                document.getElementById('back-to-main').addEventListener('click', () => this.showPage('main-page'));
+                document.getElementById('bus-list').addEventListener('click', (e) => this.handleBusListClick(e));
+                this.elements.mainNav.addEventListener('click', (e) => this.handleNavClick(e));
+                document.getElementById('plan-trip-card').addEventListener('click', () => this.showTripPlanner());
+                document.getElementById('back-to-dashboard-btn').addEventListener('click', () => this.showDashboard());
+                document.getElementById('theme-switch').addEventListener('change', (e) => this.setTheme(e.target.checked ? 'dark' : 'light'));
+                document.getElementById('language-select').addEventListener('change', (e) => this.setLanguage(e.target.value));
+                document.querySelectorAll('.language-switcher .btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                         this.setLanguage(e.target.dataset.lang);
+                         document.getElementById('language-select').value = e.target.dataset.lang;
+                    });
+                });
+                document.getElementById('close-tracking-btn-header').addEventListener('click', () => this.stopLiveTracking());
+            },
+
+            // --- CORE LOGIC ---
+            showDashboard() {
+                this.elements.dashboardView.classList.remove('d-none');
+                this.elements.tripPlannerSection.classList.add('d-none');
+            },
+
+            showTripPlanner() {
+                this.elements.dashboardView.classList.add('d-none');
+                this.elements.tripPlannerSection.classList.remove('d-none');
+                setTimeout(() => this.initMap('main'), 0);
+            },
+
+            showPage(pageId) {
+                this.state.currentPage = pageId;
+
+                // Handle the overlay page separately
+                if (pageId === 'live-tracking-page') {
+                    this.elements.pageContent.style.display = 'none';
+                    this.elements.mainNav.style.display = 'none';
+                    this.elements.liveTrackingPage.style.display = 'flex';
+                } else {
+                    // Handle regular pages
+                    this.elements.liveTrackingPage.style.display = 'none';
+                    this.elements.pageContent.style.display = 'block';
+                    // Bottom nav is part of the page content flow, so this works
+                    this.elements.mainNav.classList.toggle('d-none', pageId === 'login-page');
+                    
+                    this.elements.allPages.forEach(page => page.classList.remove('active'));
+                    const activePage = document.getElementById(pageId);
+                    if (activePage) {
+                        activePage.classList.add('active');
+                    }
+                }
+
+                if (pageId === 'main-page') this.showDashboard();
+                this.updateActiveNavLink();
+            },
+            
+            showSpinner(show) {
+                this.elements.loadingSpinner.style.display = show ? 'flex' : 'none';
+            },
+
+            setLanguage(lang) {
+                this.state.currentLang = lang;
+                document.documentElement.lang = lang;
+                document.querySelectorAll('[data-lang-key]').forEach(el => {
+                    const key = el.dataset.langKey;
+                    if (this.translations[lang]?.[key]) el.textContent = this.translations[lang][key];
+                });
+                document.querySelectorAll('[data-lang-placeholder]').forEach(el => {
+                    const key = el.dataset.langPlaceholder;
+                    if (this.translations[lang]?.[key]) el.placeholder = this.translations[lang][key];
+                });
+                document.querySelectorAll('.language-switcher .btn.active').forEach(b => b.classList.remove('active'));
+                document.querySelector(`.language-switcher .btn[data-lang="${lang}"]`)?.classList.add('active');
+            },
+
+            setTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (this.state.maps.main) this.initMap('main');
+                if (this.state.maps.live) this.initMap('live');
+            },
+            
+            setGreeting() {
+                const hour = new Date().getHours();
+                const greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Evening!";
+                document.getElementById('greeting').textContent = greeting;
+            },
+
+            initMap(mapType) {
+                const mapId = mapType === 'main' ? 'main-map' : 'live-map';
+                if (this.state.maps[mapType]) {
+                    this.state.maps[mapType].remove();
+                }
+                this.state.maps[mapType] = L.map(mapId).setView(this.mockData.userLocation, 15);
+                L.tileLayer(
+                    document.documentElement.dataset.theme === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
+                    { attribution: '&copy; OpenStreetMap & CartoDB' }
+                ).addTo(this.state.maps[mapType]);
+
+                if (mapType === 'main') {
+                    this.state.maps.main.invalidateSize();
+                }
+            },
+            
+            degreesToRadians(degrees) { return degrees * Math.PI / 180; },
+            radiansToDegrees(radians) { return radians * 180 / Math.PI; },
+            calculateBearing(start, end) {
+                const startLat = this.degreesToRadians(start.lat), startLng = this.degreesToRadians(start.lng);
+                const endLat = this.degreesToRadians(end.lat), endLng = this.degreesToRadians(end.lng);
+                let dLng = endLng - startLng;
+                const y = Math.sin(dLng) * Math.cos(endLat);
+                const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng);
+                return (this.radiansToDegrees(Math.atan2(y, x)) + 360) % 360;
+            },
+
+            _clearLiveTracking() {
+                if (this.state.liveTrackingAnimationId) {
+                    cancelAnimationFrame(this.state.liveTrackingAnimationId);
+                    this.state.liveTrackingAnimationId = null;
+                }
+            },
+
+            stopLiveTracking() {
+                 this._clearLiveTracking();
+                 this.showPage('results-page');
+            },
+
+            startLiveTracking(bus) {
+                this._clearLiveTracking(); // Stop any previous tracking first
+                this.showPage('live-tracking-page');
+                
+                setTimeout(() => {
+                    this.initMap('live');
+                    this.state.maps.live.invalidateSize();
+                    
+                    document.getElementById('tracking-bus-id').textContent = bus.id;
+                    const from = document.getElementById('current-location').value.split(',')[0];
+                    const to = document.getElementById('destination').value;
+                    document.getElementById('tracking-route').textContent = `${from} to ${to}`;
+                    
+                    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+                    const routeCoords = bus.routeCoords;
+                    
+                    L.polyline(routeCoords, { color: primaryColor, weight: 5, opacity: 0.8 }).addTo(this.state.maps.live);
+                    L.marker(routeCoords[0]).addTo(this.state.maps.live).bindPopup('Start');
+                    L.marker(routeCoords[routeCoords.length - 1]).addTo(this.state.maps.live).bindPopup('Destination');
+                    
+                    const stopIcon = L.divIcon({ className: 'stop-icon' });
+                    (bus.stops || []).forEach(stop => {
+                        L.marker(stop.latlng, { icon: stopIcon }).addTo(this.state.maps.live).bindPopup(stop.name);
+                    });
+                    this.state.maps.live.fitBounds(routeCoords, { padding: [50, 50] });
+
+                    const busMarkerIcon = L.divIcon({
+                        html: `<div class="bus-marker-icon"><div class="pulse"></div><i class="bi bi-bus-front-fill" style="color:${primaryColor};"></i></div>`,
+                        className: '', iconSize: [24, 24], iconAnchor: [12, 12]
+                    });
+                    const busMarker = L.marker(routeCoords[0], { icon: busMarkerIcon }).addTo(this.state.maps.live);
+
+                    let currentSegment = 0;
+                    let progressInSegment = 0;
+                    const speed = 0.00003; // Adjusted for lat/lng degrees
+                    let lastTimestamp = 0;
+                    
+                    const animate = (timestamp) => {
+                        if (lastTimestamp === 0) lastTimestamp = timestamp;
+                        const elapsed = timestamp - lastTimestamp;
+                        lastTimestamp = timestamp;
+
+                        if (currentSegment >= routeCoords.length - 1) {
+                            this.stopLiveTracking(); // Use the proper stop function
+                            return;
+                        }
+
+                        const startPoint = L.latLng(routeCoords[currentSegment]);
+                        const endPoint = L.latLng(routeCoords[currentSegment + 1]);
+                        const segmentDistance = startPoint.distanceTo(endPoint);
+                        const progressThisFrame = (speed * elapsed);
+
+                        progressInSegment += progressThisFrame;
+                        
+                        const ratio = Math.min(1, progressInSegment / segmentDistance);
+                        
+                        busMarker.setLatLng([
+                            startPoint.lat + (endPoint.lat - startPoint.lat) * ratio,
+                            startPoint.lng + (endPoint.lng - startPoint.lng) * ratio
+                        ]);
+
+                        const angle = this.calculateBearing(startPoint, endPoint);
+                        const iconElement = busMarker.getElement()?.querySelector('.bus-marker-icon i');
+                        if (iconElement) iconElement.style.transform = `rotate(${angle}deg)`;
+                        
+                        const busLatLng = busMarker.getLatLng();
+                        let nextStop = bus.stops.length > 0 ? bus.stops[bus.stops.length - 1].name : "Destination";
+                        for(const stop of bus.stops || []) {
+                            if(busLatLng.distanceTo(L.latLng(stop.latlng)) < endPoint.distanceTo(L.latLng(stop.latlng))) {
+                                nextStop = stop.name;
+                                break;
+                            }
+                        }
+                        document.getElementById('tracking-next-stop').textContent = nextStop;
+
+                        if (ratio >= 1) {
+                            progressInSegment = 0;
+                            currentSegment++;
+                        }
+                        
+                        this.state.liveTrackingAnimationId = requestAnimationFrame(animate);
+                    };
+
+                    this.state.liveTrackingAnimationId = requestAnimationFrame(animate);
+                }, 100);
+            },
+            
+            handleSendOtp() {
+                const sendOtpBtn = document.getElementById('send-otp-btn');
+                const phoneInput = document.getElementById('phone');
+                if (/^\d{10}$/.test(phoneInput.value)) {
+                    phoneInput.classList.remove('is-invalid');
+                    sendOtpBtn.disabled = true;
+                    sendOtpBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...`;
+                    setTimeout(() => {
+                        document.getElementById('phone-input-section').style.display = 'none';
+                        document.getElementById('otp-input-section').style.display = 'block';
+                        document.querySelector('#otp-input-section input').focus();
+                        sendOtpBtn.disabled = false;
+                        sendOtpBtn.innerHTML = this.translations[this.state.currentLang].send_otp;
+                    }, 1500);
+                } else {
+                    phoneInput.classList.add('is-invalid');
+                }
+            },
+            
+            handleLogin() { this.showPage('main-page'); },
+
+            handleLogout() {
+                this._clearLiveTracking(); // Use the new helper function
+                document.getElementById('phone-input-section').style.display = 'block';
+                document.getElementById('otp-input-section').style.display = 'none';
+                document.getElementById('phone').value = '';
+                document.querySelectorAll('#otp-input-section input').forEach(i => i.value = '');
+                this.showPage('login-page');
+            },
+            
+            handleOtpInput(e, index, inputs) {
+                if (e.key >= 0 && e.key <= 9 && e.target.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else if (e.key === 'Backspace' && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            },
+            
+            handleFindBuses(e) {
+                e.preventDefault();
+                this.showSpinner(true);
+                const from = document.getElementById('current-location').value;
+                const to = document.getElementById('destination').value;
+                setTimeout(() => {
+                    this.displayBusResults(from, to);
+                    this.showSpinner(false);
+                }, 1000);
+            },
+            
+            displayBusResults(from, to) {
+                const busListContainer = document.getElementById('bus-list');
+                const routeKey = `${from.split(',')[0]}-${to}`;
+                const results = this.mockData.busData[routeKey];
+                
+                busListContainer.innerHTML = '';
+                document.getElementById('route-info').textContent = `${from} to ${to}`;
+
+                if (!results) {
+                    busListContainer.innerHTML = `<div class="alert alert-warning">No direct buses found.</div>`;
+                    this.showPage('results-page');
+                    return;
+                }
+
+                results.forEach(bus => {
+                    const lang = this.state.currentLang;
+                    let crowdBadge = '', crowdText = '', actionHtml = '';
+                    switch (bus.crowd) {
+                        case 'not-crowded':
+                            crowdBadge = `bg-success`; crowdText = this.translations[lang].not_crowded;
+                            actionHtml = `<p class="mb-0 text-muted small"><i class="bi bi-check-circle me-1"></i> ${this.translations[lang].safe_to_board}</p>`;
+                            break;
+                        case 'crowded':
+                            crowdBadge = `bg-warning text-dark`; crowdText = this.translations[lang].crowded;
+                            actionHtml = `<p class="mb-0 text-muted small"><i class="bi bi-exclamation-triangle me-1"></i> ${this.translations[lang].may_be_full}</p>`;
+                            break;
+                        case 'overcrowded':
+                            crowdBadge = `bg-danger`; crowdText = this.translations[lang].overcrowded;
+                            actionHtml = `<div class="reroute-section p-3 mt-3">
+                                    <p class="fw-semibold small">${this.translations[lang].bus_full_prompt}</p>
+                                    <div class="vstack gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary w-100 text-start">${this.translations[lang].wait_next} (ETA: ${bus.nextBusEta} min)</button>
+                                        <button class="btn btn-sm btn-primary w-100 text-start reroute-btn" data-bus-id='${JSON.stringify(bus)}'>${this.translations[lang].find_alt}</button>
+                                    </div>
+                                </div>`;
+                            break;
+                    }
+                    
+                    const trackBtnHtml = bus.routeCoords ? `<button class="btn btn-sm btn-outline-primary track-btn" data-bus-id='${JSON.stringify(bus)}'><i class="bi bi-broadcast me-1"></i> ${this.translations[lang].track_live}</button>` : '';
+
+                    const cardHtml = `
+                        <div class="card bus-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-bus-front fs-2 me-3" style="color: var(--primary-color);"></i>
+                                        <div>
+                                            <div class="fw-bold">${bus.id}</div>
+                                            <div class="crowd-status"><span class="badge rounded-pill ${crowdBadge}">${crowdText}</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-muted small"><span class="live-indicator"></span>${this.translations[lang].live_eta}</div>
+                                        <div class="fw-bold fs-5">${bus.eta} <span class="fs-6 fw-normal">min</span></div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 action-container">
+                                    ${actionHtml}
+                                </div>
+                                ${trackBtnHtml ? `<hr><div class="text-center">${trackBtnHtml}</div>` : ''}
+                            </div>
+                        </div>`;
+                    busListContainer.insertAdjacentHTML('beforeend', cardHtml);
+                });
+                this.showPage('results-page');
+            },
+            
+            handleBusListClick(e) {
+                const rerouteBtn = e.target.closest('.reroute-btn');
+                const trackBtn = e.target.closest('.track-btn');
+                if (rerouteBtn) {
+                    const bus = JSON.parse(rerouteBtn.dataset.busId);
+                    if (bus.alternative) {
+                         document.getElementById('reroute-options').innerHTML = `
+                            <p>${this.translations[this.state.currentLang].alt_suggestion}</p>
+                            <div class="alert alert-info">
+                                <p class="mb-1"><strong>${this.translations[this.state.currentLang].part1}</strong> ${bus.alternative.part1}</p>
+                                <p class="mb-0"><strong>${this.translations[this.state.currentLang].part2}</strong> ${bus.alternative.part2}</p>
+                            </div>`;
+                        new bootstrap.Modal(document.getElementById('rerouteModal')).show();
+                    }
+                }
+                if (trackBtn) {
+                    const bus = JSON.parse(trackBtn.dataset.busId);
+                    this.startLiveTracking(bus);
+                }
+            },
+            
+            handleNavClick(e) {
+                e.preventDefault();
+                const link = e.target.closest('.bottom-nav-link');
+                if (link) {
+                    this.showPage(link.dataset.page);
+                }
+            },
+
+            updateActiveNavLink() {
+                 document.querySelectorAll('.bottom-nav-link').forEach(link => {
+                    link.classList.toggle('active', link.dataset.page === this.state.currentPage);
+                });
+            }
+        };
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => SahayatriApp.init());
+    </script>
+</body>
+</html>
+
+
